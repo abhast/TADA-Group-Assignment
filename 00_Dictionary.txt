@@ -1,38 +1,41 @@
-Left
-
-
-
-Right
+// Left
 
 
 
 
 
-
-Liberal
-
-
-
-Conservative
+// Right
 
 
 
 
 
-Pro gun rights
 
-
-Anti gun rights
-
+// Liberal
 
 
 
-Pro abortion
+// Conservative
+
+
+
+
+
+// Pro gun rights
+
+gun control
+
+// Anti gun rights
+
+
+
+
+// Pro abortion
 
 pro-life
 
 
-Anti abortion
+// Anti abortion
 
 pro-choice
 
