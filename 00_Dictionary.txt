@@ -90,10 +90,15 @@ Consumer protection positive
 Social safety; social security; social contract; social benefits positive
 Banking regulations positive
 Middle-class; working class; labor unions positive
-Diversity positive
+Diversity; handicapped; African-American; Native American positive
 student government loans positive
 new immigrants positive
-
+Agricultural conglomerates negative
+Taxing and regulating corporations positive
+Health insurance; medical insurance; minimum wage; health care; child care positive
+Clean energy; climate change
+Withdrawal of troups positive
+Intervention in Afghanistan and Syria negative
 
 Conservative
 Protection of grey wolves negative
