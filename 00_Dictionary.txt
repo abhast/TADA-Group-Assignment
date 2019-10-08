@@ -1,43 +1,55 @@
-// Left
+Left
 
 
 
-
-
-// Right
+Right
 
 
 
 
 
 
-// Liberal
+Liberal
+Progressive
+Consumer protection positive
+Social safety; social security; social contract; social benefits positive
+Banking regulations positive
+Middle-class; working class; labor unions positive
+Diversity positive
+student government loans positive
+new immigrants positive
+
+
+Conservative
+Protection of grey wolves negative
+War powers positive
+Illegal migrants negative
+gas, coal, and oil extraction industries positive
+homosexuality; same-sex marriage negative
+Security; safety positive
+Family positive
+Nation; America positive
+self-made man/woman positive
+taxation negative
 
 
 
-// Conservative
+
+Pro gun rights
+
+
+Anti gun rights
 
 
 
 
-
-// Pro gun rights
-
-gun control
-
-// Anti gun rights
+Pro abortion
 
 
 
-
-// Pro abortion
-
-pro-life
+Anti abortion
 
 
-// Anti abortion
-
-pro-choice
 
 
 
@@ -47,3 +59,4 @@ Pro climate change
 
 
 Anti climate change
+
