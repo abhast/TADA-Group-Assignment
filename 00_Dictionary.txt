@@ -1,100 +1,62 @@
 ///// Left /////
 
-democratic socialist and/or democratic socialism
-
+democratic socialist
+democratic socialism
 tuition-free
-
 DACA
-
 Obamacare or ACA
-
 family leave
-
 jobs guarantee 
-
 Medicare for All 
-
 single-payer healthcare
-
 Green New Deal 
-
 campaign finance reform 
-
 socialist 
-
 economic mobilization 
-
 net-zero emissions or zero emissions
-
 marginal tax 
-
 end legal (stemmed) racial segregation
-
 Civil Rights Movement
-
 Hard-Core Liberal or staunch liberal
-
 support of gay rights 
-
 national health insurance
-
 immigration reform
-
 gun-safety legislation
-
 in favour of Roe vs. Wade
-
 opposition to economic inequality
-
 support to labor rights
-
 congressional Progressive Caucus
-
 raise federal minimum wage
-
 Workplace Democracy Act
-
 rebuilding the middle class
-
 reducing income and wealth inequality 
+black community
+black
+African American
+
+
 
 ///// Right  /////
 
 hawkish
-
 Ludwig von Mises 
-
 gold standard 
-
 limited government 
-
 free-market economics
-
- less government 
- 
- lower tax (or taxes, stemm)
- 
- less regulation
-
+less government 
+lower tax (or taxes, stemm) 
+less regulation
 freedom of choice on abortions
-
 against Roe vs. Wade
-
 libertarian
-
 Republican Liberty Caucus
-
 balanced budget 
-
 constitutional rights
-
 right to keep and bear arms
-
 free trade 
-
 capital punishment 
-
 death penalty
+white majority
 
 
 ///////Liberal//////////
@@ -135,6 +97,8 @@ cancelling student debt
 support for same-sex marriage
 support to Black Lives Matter
 condemning recognizing Israel’s capital
+oppose mandatory minimum sentences
+labour union
 
 
 
@@ -183,6 +147,9 @@ opposition to international nuclear agreement with Iran
 Free trade
 audit Federal Reserve
 repeal clause 14th amendment 
+right to work
+oppose assisted suicide
+
 
 
 ////////////Pro gun rights//////////
@@ -191,7 +158,8 @@ gun control
 Nuclear strike
 opposition to gun control regulations
 gun-rights supporter
-
+2nd amendment
+second amendment
 
 //////////Anti gun rights//////////
 
@@ -204,15 +172,20 @@ closing gun show loophole
 
 
 
+
+
 /////Pro abortion//////
 
 pro-choice
+abortion
+women's choice
 
 
 /////Anti abortion////
 
 pro-life
 Sidewalk counseling
+
 
 
 
@@ -226,7 +199,7 @@ climate change as threat
 opposing the Dakota Access Pipeline
 climate change as national emergency
 climate change as international emergency
-
+renewable energy
 
 
 //////Anti climate change//////
