@@ -1,0 +1,484 @@
+---
+title: "TADA Assignment R Notebook"
+authors: Abhas, Anna, Maria, Sofia
+output: html_notebook
+---
+
+Loading all required packages
+
+```{r}
+install.packages("quanteda")
+install.packages("readtext")
+install.packages("tokenizers")
+library(tidyverse) 
+library(WikipediR)
+library(rvest)
+library(xml2)
+library(devtools)
+library(quanteda)
+library(readtext)
+library(tokenizers)
+library(legislatoR)
+library(dplyr)
+library(quanteda.corpora)
+library(ggplot2)
+```
+
+
+Creating list of US legislators of 113th Congress and onwards (2013-present)
+#legislator list from legislatoR package - all
+```{r}
+senate <- right_join(x = get_core(legislature = "usa_senate"),
+          y = filter(get_political(legislature = "usa_senate"), session >= 113), 
+          by = "pageid")
+
+house <- right_join(x = get_core(legislature = "usa_house"),
+          y = filter(get_political(legislature = "usa_house"), session >= 113), 
+          by = "pageid")
+
+name <- c(unlist(senate$wikititle), unlist(house$wikititle))
+sex <- c(unlist(senate$sex), unlist(house$sex))
+party <- c(unlist(senate$party), unlist(house$party))
+ethnicity <- c(unlist(senate$ethnicity), unlist(house$ethnicity))
+
+legislator_data <- data.frame(name, sex, party, ethnicity, stringsAsFactors=FALSE)
+
+# some legislators register as members of both DFL and D, or RFL and R
+# modifying affiliated party names (DFL/RFL) to avoid duplication of legislator names
+for (i in 1:nrow(legislator_data)){
+  if(legislator_data[i,]['party']=="DFL"){  legislator_data[i,]['party'] <- "D" }
+  if(legislator_data[i,]['party']=="RFL"){  legislator_data[i,]['party'] <- "R" }
+}
+
+legislator_data <- unique(legislator_data)
+
+legislator_name_list <- unique(legislator_data$name)
+legislator_name_list
+
+```
+
+
+Following chunk 
+- reads Wikipedia page content for all the legislators selected above
+- parses the content into readable text, removing line breaks
+- creats a text file for each legislator containing clean page content
+#Custom list of legislators (reference text)
+```{r}
+legislator_name_list_ref <- c("Bernie_Sanders", "Elizabeth_Warren", "Maxine_Waters", "Tim_Scott", "Liz_Cheney", 
+                              "Mitch_McConnell", "Michele_Bachmann", "Ted_Cruz", "Alexandria_Ocasio-Cortez", 
+                              "Ron_Paul", "John_Lewis_(civil_rights_leader)", "Tim_Johnson_(South_Dakota_politician)", 
+                              "Steve_Scalise", "Ed_Royce", "Martha_McSally", "Mark_Walker_(North_Carolina_politician)", 
+                              "David_Valadao", "Tom_McClintock", "Steven_Palazzo", "Mick_Mulvaney", "Martha_Roby", 
+                              "Orrin_Hatch", "Elijah_Cummings", "Katherine_Clark", "Raúl_Grijalva", "Keith_Ellison", 
+                              "Chris_Murphy", "Sheila_Jackson_Lee", "Mark_Pocan", "Carol_Shea-Porter", "Jerry_Nadler", 
+                              "Yvette_Clarke" )
+
+
+for (i in legislator_name_list_ref){
+  print(paste0("Loading Page for: ", i))
+  web_address <- paste0("https://en.wikipedia.org/wiki/", i)
+  page_html <- read_html(web_address)
+  page_paragraphs <- html_nodes(page_html,"p")
+  page_text <- paste(html_text(page_paragraphs), sep = '', collapse = '')
+  
+  text_data <- as.null()
+  
+  for (j in 1:length(page_text)) {
+    if (is.null(text_data)) { text_data <- page_text }
+    else { text_data <- paste(text_data, page_text, sep = '', collapse = '') }
+  }
+  
+  # text pre-processing
+  text_data <- gsub("\n", " ", text_data)       # remove the existing line breaks
+  text_data <- gsub("\\[\\d*\\]","", text_data) # removes citations
+  text_data <- gsub("U\\.S\\.","US", text_data) # changes all "U.S." occurences to "US"
+ # text_data <- gsub("[[:upper:]]\\.", "[[:upper:]]", text_data)
+  
+  if(!dir.exists("/cloud/project/Wiki Content files/")){
+    dir.create("Wiki Content files")
+  }
+  
+  file_name <- gsub("\\_\\(.*","", i)
+  if(str_count(file_name,"_")==1){
+    file_name <- gsub("\\_","_NA_", file_name)
+  }
+
+  write(text_data, paste0("/cloud/project/Wiki Content files/", paste0(file_name, ".txt")))
+  
+}
+
+```
+
+
+Following chunk-
+- reads all the text files created above
+- creates a data corpus
+#Creating corpus, DFM
+```{r}
+wiki_files <- readtext("Wiki Content files/*.txt", 
+                       docvarsfrom = "filenames", 
+                       dvsep = "_", 
+                       docvarnames = c("FirstName", "MiddleName", "LastName"))
+wiki_corpus <- corpus(wiki_files, text_field = "text")
+
+wiki_dfm <- dfm(wiki_corpus,
+                stem = TRUE,
+                remove = stopwords("english"),
+                remove_punct = TRUE,
+                remove_numbers = TRUE)
+
+#wiki_dfm <- dfm_trim(wiki_dfm, min_count = 10, min_docfreq = 5)
+
+#wiki_token <- tokens(wiki_corpus, what="sentence")
+
+```
+
+
+#Corpus summary, subset, filtering based on Tokens and Types
+```{r}
+summary(wiki_corpus)
+corpus_summary <- summary(wiki_corpus)
+corpus_summary$Tokens
+order(wiki_corpus)
+summary(corpus_subset(wiki_corpus, FirstName=="Bernie"))
+
+ntoken(wiki_corpus)
+ntype(wiki_corpus)
+
+summary(corpus_subset(wiki_corpus, ntoken(wiki_corpus)>6000))
+summary(corpus_subset(wiki_corpus, ntype(wiki_corpus)>3000))
+
+high_token_corpus <- corpus_subset(wiki_corpus, ntoken(wiki_corpus)>10000)
+
+summary(high_token_corpus)
+```
+
+
+#Exploring corpus text
+```{r}
+kwic(wiki_corpus, pattern = "terror")
+kwic(wiki_corpus, pattern = "terror", valuetype = "regex")
+kwic(wiki_corpus, pattern = "abort*")
+
+kwic(wiki_corpus, pattern = phrase("health"))
+
+textplot_xray(
+    kwic(wiki_corpus, pattern = "terror")) + 
+    ggtitle("Lexical dispersion")
+textplot_xray(
+    kwic(wiki_corpus, pattern = "abort*")) + 
+    ggtitle("Lexical dispersion")
+
+wiki_token <- tokens(wiki_corpus, what="word")
+col_toks <- wiki_token %>% 
+       tokens_remove(stopwords("en")) %>% 
+       tokens_select(pattern = "^[A-Z]", valuetype = "regex", 
+                     case_insensitive = FALSE, padding = TRUE) %>% 
+       textstat_collocations(min_count = 5, tolower = FALSE)
+head(col_toks)
+col_toks
+
+```
+
+
+This chunk explores the lexical diversity between Wikipedia page content for Bernie Sanders and Orrin Hatch.
+#Exploring lexical diversity
+```{r}
+docvars(wiki_corpus)
+Bernie <- corpus_subset(wiki_corpus, FirstName == "Bernie")
+B_token <- tokens(Bernie, what="word")
+B_toks <- B_token %>% 
+       tokens_remove(stopwords("en")) %>% 
+       tokens_select(pattern = "^[A-Z]", valuetype = "regex", 
+                     case_insensitive = FALSE, padding = TRUE) %>% 
+       textstat_collocations(min_count = 5, tolower = FALSE)
+B_toks
+
+Orrin <- corpus_subset(wiki_corpus, FirstName == "Orrin")
+O_token <- tokens(Orrin, what="word")
+O_toks <- O_token %>% 
+       tokens_remove(stopwords("en")) %>% 
+       tokens_select(pattern = "^[A-Z]", valuetype = "regex", 
+                     case_insensitive = FALSE, padding = TRUE) %>% 
+       textstat_collocations(min_count = 5, tolower = FALSE)
+O_toks
+
+lexdiv <- textstat_lexdiv(wiki_dfm)
+lexdiv
+
+read <- textstat_readability(wiki_corpus, measure = "Flesch")
+read
+
+textstat_dist(wiki_dfm, method="euclidean")
+textstat_simil(wiki_dfm, method="cosine")
+textstat_simil(wiki_dfm, method="hamman")
+
+Bernie_dfm <- dfm(Bernie, remove = stopwords("en"), tolower=T, stem=T, remove_punct=T)
+topfeatures(Bernie_dfm)
+textplot_wordcloud(Bernie_dfm)
+
+Orrin_dfm <- dfm(Orrin, remove = stopwords("en"), tolower=T, stem=T, remove_punct=T)
+topfeatures(Orrin_dfm)
+textplot_wordcloud(Orrin_dfm)
+
+docnames(wiki_dfm)
+head(textstat_keyness(wiki_dfm, target="Bernie_NA_Sanders.txt",
+                      measure="chi2"), n=20)
+textstat_keyness(wiki_dfm, target="Bernie_NA_Sanders.txt",
+                      measure="chi2") %>% textplot_keyness()
+head(textstat_keyness(wiki_dfm, target="Orrin_NA_Hatch.txt",
+                      measure="chi2"), n=20)
+textstat_keyness(wiki_dfm, target="Orrin_NA_Hatch.txt",
+                      measure="chi2") %>% textplot_keyness()
+
+topfeatures(wiki_dfm)
+textplot_wordcloud(wiki_dfm, min_count=5, max_words=500)
+
+```
+
+
+Applying Wordscores to the corpus
+https://uclspp.github.io/PUBLG088/wordscore.html
+#Variation 1: Sanders-Bachmann
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Bernie Sanders and Michele Bachman wiki content
+dem_index <- which((wiki_data$FirstName == 'Bernie' & wiki_data$LastName == 'Sanders'))
+rep_index <- which((wiki_data$FirstName == 'Michele' & wiki_data$LastName == 'Bachmann'))
+
+# set the reference scrores for Bernie and Michele and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+refscores
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+We run multiple models, for better fits.
+#Variation 2: Sanders-Hatch
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Bernie Sanders and Orrin Hatch wiki content
+dem_index <- which((wiki_data$FirstName == 'Bernie' & wiki_data$LastName == 'Sanders'))
+rep_index <- which((wiki_data$FirstName == 'Orrin' & wiki_data$LastName == 'Hatch'))
+
+# set the reference scrores for Bernie and Orrin and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+Variation #2 is a better fit than Sanders-Bachmann, which leads us to believe that profile length is really a factor when applying Wordscores to Wikipedia. Still, we'll run a couple more variations. 
+
+#Variation 3: Sanders-Cruz
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Bernie Sanders and Ted Cruz wiki content
+dem_index <- which((wiki_data$FirstName == 'Bernie' & wiki_data$LastName == 'Sanders'))
+rep_index <- which((wiki_data$FirstName == 'Ted' & wiki_data$LastName == 'Cruz'))
+
+# set the reference scrores for Bernie and Ted and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 4: AOC-Bachmann
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of AOC and Michele Bachmann wiki content
+dem_index <- which((wiki_data$FirstName == 'Alexandria' & wiki_data$LastName == 'Ocasio-Cortez'))
+rep_index <- which((wiki_data$FirstName == 'Michele' & wiki_data$LastName == 'Bachmann'))
+
+# set the reference scrores for AOC and Bachmann and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 5: AOC-Hatch
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of AOC and Orrin Hatch wiki content
+dem_index <- which((wiki_data$FirstName == 'Alexandria' & wiki_data$LastName == 'Ocasio-Cortez'))
+rep_index <- which((wiki_data$FirstName == 'Orrin' & wiki_data$LastName == 'Hatch'))
+
+# set the reference scrores for AOC and Hatch and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 6: AOC-Cruz
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of AOC and Ted Cruz wiki content
+dem_index <- which((wiki_data$FirstName == 'Alexandria' & wiki_data$LastName == 'Ocasio-Cortez'))
+rep_index <- which((wiki_data$FirstName == 'Ted' & wiki_data$LastName == 'Cruz'))
+
+# set the reference scrores for AOC and Cruz and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 7: Jerry Nadler-Michele Bachmann
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Jerry Nadler and Michele Bachmann wiki content
+dem_index <- which((wiki_data$FirstName == 'Jerry' & wiki_data$LastName == 'Nadler'))
+rep_index <- which((wiki_data$FirstName == 'Michele' & wiki_data$LastName == 'Bachmann'))
+
+# set the reference scrores for Nadler and Bachmann and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 8: Jerry Nadler-Orrin Hatch
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Jerry Nadler and Orrin Hatch wiki content
+dem_index <- which((wiki_data$FirstName == 'Jerry' & wiki_data$LastName == 'Nadler'))
+rep_index <- which((wiki_data$FirstName == 'Orrin' & wiki_data$LastName == 'Hatch'))
+
+# set the reference scrores for Nadler and Hatch and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#Variation 9: Jerry Nadler-Ted Cruz
+```{r}
+wiki_data <- as.data.frame(docvars(wiki_corpus))
+
+# find the index of Jerry Nadler and Ted Cruz wiki content
+dem_index <- which((wiki_data$FirstName == 'Jerry' & wiki_data$LastName == 'Nadler'))
+rep_index <- which((wiki_data$FirstName == 'Ted' & wiki_data$LastName == 'Cruz'))
+
+# set the reference scrores for Nadler and Cruz and leave the rest to NA 
+refscores <- rep(NA, nrow(wiki_dfm))
+refscores[rep_index] <- -1
+refscores[dem_index] <- 1
+
+#Fit a wordscores model using the reference scores
+wordscores_model <- textmodel_wordscores(wiki_dfm, refscores, scale = "linear", smooth = 1)
+
+# Extract the wordscores, rescale them and then save in wiki_data data-frame we created earlier
+wordscores <- predict(wordscores_model, rescaling = "mv")
+wordscores
+
+```
+
+#ggplots for the wordscore exercise
+#Plot Sanders - Bachmann
+```{r}
+Legislators<- c("Bernie Sanders", "Elizabeth Warren", "AOC", "John Lewis",
+      "Mitch McConnell", "Ted Cruz", "Tim Johnson", "Ron Paul", "Liz Cheney", "Tim Scott",
+      "Maxine Waters", "Michele Bachman")
+word_scores <- c(1, 0.2164, 0.1621, 0.0896, 0.0845,
+                 0.0719, 0.0602, 0.0433, -0.0328, -0.0412, -0.1316, -1)
+data= data.frame(Legislators, word_scores)
+ggplot(data = data, aes(fill=Legislators, x= word_scores, y = Legislators)) +
+geom_point()
+```
+
+#ggplots for the wordscore exercise
+#Plot Sanders - Hatch
+```{r}
+Legislators_02 <- c("Bernie Sanders", "Carol Shea-Porter", "AOC","Mark Pocan", "Elizabeth Warren", "Ron Paul", "Shelia Jackson Lee", "Steve Scalise", "Yvette Clarke", "Martha Roby", "Liz Cheney", "Ed Royce", "David Valadao", "Steven Palazzo", "Jerry Nadler", "Keith Ellison", "Raul Grijalva","John Lewis", "Martha McSally", "Elijah Cummings", "Chris Murphy","Ted Cruz", "Tim Johnson", "Michele Bachmann", "Mitch McConnell", "Tim Scott", "Maxine Waters",    "Katherine Clark", "Mark Walker", "Mick Mulvaney", "Orrin Hatch", "Tom McClintok")
+
+word_scores_02<- c(1, 0.2976, 0.276, 0.2605, 0.2211, 0.2119, 0.1267, 0.1258,
+                   0.0944, 0.0931, 0.0916, 0.0684, 0.0535, 0.0421, 0.038,
+                   0.0358, 0.0354, 0.0291, 0.0279, 0.0253, 0.0201, -0.0089,
+                   -0.0139, -0.0158, -0.042, -0.0519, -0.0548, -0.0563,
+                   -0.0656, -0.1254, -1, 0.0161)
+
+data02 = data.frame(Legislators_02, word_scores_02)
+ggplot(data = data02, aes(fill=Legislators_02, x= word_scores_02, y = Legislators_02)) +geom_point()
+```
+
+#ggplots for the wordscore exercise
+#Plot AOC - Bachmann
+```{r}
+Legislators_03 <- c("Bernie Sanders",	"Carol Shea-Porter",	"Alexandria Ocasio-Cortez",	"Mark Pocan",	"Elizabeth Warren",	"Ron Paul",	"Shelia Jackson Lee",	"Steve Scalise",	"Yvette Clarke", "Martha Roby",	"Liz Cheney",	"Ed Royce",	"David Valadao",	"Steven Palazzo",	"Jerry Nadler", "Keith Ellison",	"Raul Grijalva",	"John Lewis",	"Martha McSally",	"Elijah Cummings", "Chris Murphy",	"Ted Cruz",	"Tim Johnson", "Michele Bachmann",	"Mitch McConnell",	"Tim Scott", "Maxine Waters",	"Katherine Clark",	"Mark Walker",	"Mick Mulvaney",	"Orrin Hatch",	"Tom McClintok")
+
+word_scores_03<- c(0.2205,	-0.0411,	1,	0.1112,	0.0578,	-0.1391,	0.0384,	-0.0555,	-0.0219,	-0.15, -0.1086,	-0.076,	-0.0605,	0.1297,	0.076,	-0.192,	-0.0422,	0.0523,	-0.037,  -0.0285,	-0.0826,	-0.0129,	-0.0215,	-1,	-0.0451,	-0.1345,	-0.0028,	-0.1099, -0.0517,	-0.1376,	-0.0967,	0.0446)
+
+data03 = data.frame(Legislators_03, word_scores_03)
+ggplot(data = data03, aes(fill=Legislators_03, x= word_scores_03, y = Legislators_03)) + geom_point()
+```
+
+
