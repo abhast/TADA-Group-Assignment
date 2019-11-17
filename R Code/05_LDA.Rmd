@@ -1,0 +1,69 @@
+---
+title: "TF-IDF"
+authors: Abhas, Anna, Maria, Sofia
+output: html_notebook
+---
+
+```{r}
+library(topicmodels)
+library(stm)
+library(tidytext)
+library(ggplot2)
+library(dplyr)
+```
+
+
+#Creating DFM 
+```{r}
+wiki_dfm_new <- dfm(wiki_corpus, remove = stopwords("english"), 
+                remove_punct = TRUE, remove_numbers = TRUE)
+
+topfeatures(wiki_dfm_new, 100)
+
+wiki_dfm_new <- dfm_trim(wiki_dfm_new, max_termfreq = 2000)
+
+common_terms <- c("june", "january", "may")
+
+wiki_dfm_new <- dfm_select(wiki_dfm_new, pattern = common_terms, selection = "remove", valuetype = "fixed")
+
+topfeatures(wiki_dfm_new, 100)
+
+```
+
+
+```{r}
+
+lda <- LDA(wiki_dfm_new, k = 15, method = "Gibbs", control = list(verbose=25L, seed = 123, burnin = 100, iter = 500))
+
+terms <- get_terms(lda, 50)
+terms[,1]
+topics <- get_topics(lda, 1)
+
+paste(terms[,1], collapse=", ")
+paste(terms[,7], collapse=", ")
+paste(terms[,10], collapse=", ")
+paste(terms[,12], collapse=", ")
+paste(terms[,15], collapse=", ")
+
+sample(wiki_corpus[topics==5], 1)
+
+
+ap_topics <- tidy(lda, matrix = "beta")
+ap_topics
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(5, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms <- ap_topics %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
+
+```
+
