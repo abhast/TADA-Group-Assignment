@@ -1,0 +1,171 @@
+---
+title: "Naive-Bayes"
+authors: Abhas, Anna, Maria, Sofia
+output: html_notebook
+---
+
+
+#Fetching Wikipedia content for all legislators
+```{r}
+legislator_name_list <- legislator_data$name
+
+for (i in legislator_name_list){
+  #print(paste0("Loading Page for: ", i))
+  web_address <- paste0("https://en.wikipedia.org/wiki/", i)
+  page_html <- read_html(web_address)
+  page_paragraphs <- html_nodes(page_html,"p")
+  page_text <- paste(html_text(page_paragraphs), sep = '', collapse = '')
+  
+  text_data <- as.null()
+  
+  for (j in 1:length(page_text)) {
+    if (is.null(text_data)) { text_data <- page_text }
+    else { text_data <- paste(text_data, page_text, sep = '', collapse = '') }
+  }
+  
+  # text pre-processing
+  text_data <- gsub("\n", " ", text_data)       # remove the existing line breaks
+  text_data <- gsub("\\[\\d*\\]","", text_data) # removes citations
+  text_data <- gsub("U\\.S\\.","US", text_data) # changes all "U.S." occurences to "US"
+ # text_data <- gsub("[[:upper:]]\\.", "[[:upper:]]", text_data)
+  
+  if(!dir.exists("/cloud/project/Wiki Content files/")){
+    dir.create("Wiki Content files")
+  }
+  
+  file_name <- gsub("\\_\\(.*","", i)
+  
+  if(str_count(file_name,"_")==1){
+    file_name <- gsub("\\_","_NA_", file_name)
+  }
+  if(str_count(file_name,"_")>2){
+    mid_name <- gsub("\\_", "-", gsub('^.|.$', "", str_extract(file_name, "\\_(.*)\\_")))
+    file_name <- gsub("\\_(.*)\\_", paste0("_", mid_name,"_"), file_name)
+  }
+ 
+
+  for (k in 1:nrow(legislator_data)){
+  if(legislator_data[k,]['name']==i){  
+    file_name <- paste0(file_name, 
+                        "_", legislator_data[k,]['party'], 
+                        "_", legislator_data[k,]['sex'], 
+                        "_", legislator_data[k,]['ethnicity']) }
+  }
+
+  write(text_data, paste0("/cloud/project/Wiki Content files/", paste0(file_name, ".txt")))
+  
+  print(paste0("Created file: ", file_name))
+
+}
+
+```
+
+
+Following chunk
+- reads all the text files created above
+- creates a data corpus
+#Creating corpus
+```{r}
+wiki_files <- readtext("Wiki Content files/*.txt", 
+                       docvarsfrom = "filenames", 
+                       dvsep = "_", 
+                       docvarnames = c("FirstName", "MiddleName", "LastName", "Party", "Gender", "Ethnicity"))
+wiki_corpus <- corpus(wiki_files, text_field = "text")
+
+wiki_dfm <- dfm(wiki_corpus, remove_punct = TRUE, remove_numbers = TRUE, remove = stopwords("english"))
+
+```
+
+
+Method 2: Applying Naive-Bayes to the corpus
+
+
+#Creating Training and Test sets
+```{r}
+# shuffling to split into training and test set
+smp <- sample(c("train", "test"), size=ndoc(wiki_corpus), prob=c(0.80, 0.20), replace=TRUE)
+
+train <- which(smp=="train")
+test <- which(smp=="test")
+
+ndoc(wiki_corpus)
+
+length(train)
+length(test)
+```
+
+Trying NB with different variations of DFMs
+
+#Creating DFM #1 - Removing stopwords, as well as numbers and punctuations
+```{r}
+wiki_dfm_p <- dfm(wiki_corpus, remove = stopwords("english"), remove_punct = TRUE, remove_numbers = TRUE)
+```
+
+Gender based classification probably relies on words like "she" and "her", so
+#Creating DFM #2 - Retaining stopwords, but removing numbers and punctuations
+```{r}
+wiki_dfm_g <- dfm(wiki_corpus, remove_punct = TRUE, remove_numbers = TRUE)
+```
+
+
+```{r}
+topfeatures(wiki_dfm_p, 100)
+
+topfeatures(wiki_dfm_g, 100)
+
+
+```
+
+
+
+#training model based on legislator Party using NB
+```{r}
+# training Naive Bayes model
+nb_p <- textmodel_nb(wiki_dfm_p[train,], docvars(wiki_corpus, "Party")[train])
+
+# predicting labels for test set
+preds_p <- predict(nb_p, newdata = wiki_dfm_p[test,])
+
+# computing the confusion matrix
+(conf_matrix_p <- table(preds_p, docvars(wiki_corpus, "Party")[test]))
+
+# function to compute performance metrics
+precrecall <- function(mytable, verbose=TRUE) {
+    truePositives <- mytable[1,1]
+    falsePositives <- sum(mytable[1,]) - truePositives
+    falseNegatives <- sum(mytable[,1]) - truePositives
+    precision <- truePositives / (truePositives + falsePositives)
+    recall <- truePositives / (truePositives + falseNegatives)
+    if (verbose) {
+        print(mytable)
+        cat("\n precision =", round(precision, 2), 
+            "\n    recall =", round(recall, 2), "\n")
+    }
+    invisible(c(precision, recall))
+}
+
+# precision and recall
+precrecall(conf_matrix_p)
+
+# accuracy
+sum(diag(conf_matrix_p)) / sum(conf_matrix_p)
+```
+
+
+#training model based on legislator Gender using NB
+```{r}
+nb_g <- textmodel_nb(wiki_dfm_g[train,], docvars(wiki_corpus, "Gender")[train])
+
+# predicting labels for test set
+preds_g <- predict(nb_g, newdata = wiki_dfm_g[test,])
+
+# computing the confusion matrix
+(conf_matrix_g <- table(preds_g, docvars(wiki_corpus, "Gender")[test]))
+
+# precision and recall
+precrecall(conf_matrix_g)
+
+# accuracy
+sum(diag(conf_matrix_g)) / sum(conf_matrix_g)
+```
+
