@@ -1,0 +1,35 @@
+---
+title: "Regularised Regression"
+authors: Abhas, Anna, Maria, Sofia
+output: html_notebook
+---
+
+
+#----- Method 3: Applying Regularised Regression to the corpus
+
+Using the same token and DFM as for Method 2
+And using the same training and test set as for Method 2
+
+#Training model using Regularised Regression
+```{r}
+ridge <- cv.glmnet(x=wiki_dfm[train,], y=docvars(wiki_corpus, "Party")[train],alpha=0, nfolds=3, family="binomial")
+plot(ridge)
+```
+
+#Performance metrics
+```{r}
+pred <- predict(ridge, wiki_dfm[test,], type="class")
+(cm <- table(pred, docvars(wiki_corpus, "Party")[test]))
+
+precrecall(cm)
+
+sum(diag(cm)) / sum(cm)
+```
+
+#Extracting coefficients
+```{r}
+best.lambda <- which(ridge$lambda==ridge$lambda.1se)
+beta <- ridge$glmnet.fit$beta[,best.lambda]
+
+beta
+```
