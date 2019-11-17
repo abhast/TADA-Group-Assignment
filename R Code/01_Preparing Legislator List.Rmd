@@ -1,0 +1,63 @@
+---
+title: "Preparing Legislator List"
+authors: Abhas, Anna, Maria, Sofia
+output: html_notebook
+---
+
+Loading all required packages
+
+```{r}
+library(tidyverse) 
+library(WikipediR)
+library(rvest)
+library(xml2)
+library(devtools)
+library(quanteda)
+library(readtext)
+library(tokenizers)
+library(legislatoR)
+library(dplyr)
+library(quanteda.corpora)
+library(ggplot2)
+library(glmnet)
+library(readxl)
+
+```
+
+
+Creating list of US legislators of 113th Congress and onwards (2013-present)
+#legislator list from legislatoR package - all
+```{r}
+senate <- right_join(x = get_core(legislature = "usa_senate"),
+          y = filter(get_political(legislature = "usa_senate"), session >= 113), 
+          by = "pageid")
+
+house <- right_join(x = get_core(legislature = "usa_house"),
+          y = filter(get_political(legislature = "usa_house"), session >= 113), 
+          by = "pageid")
+
+name <- c(unlist(senate$wikititle), unlist(house$wikititle))
+sex <- c(unlist(senate$sex), unlist(house$sex))
+party <- c(unlist(senate$party), unlist(house$party))
+ethnicity <- c(unlist(senate$ethnicity), unlist(house$ethnicity))
+
+legislator_data <- data.frame(name, sex, party, ethnicity, stringsAsFactors=FALSE)
+
+# Some legislators register as members of both DFL and D, or RFL and R
+# modifying affiliated party names (DFL/RFL) to avoid duplication of legislator names.
+# Also, modifying the independents since all the independets in the list caucaus with Democrats
+
+for (i in 1:nrow(legislator_data)){
+  if(legislator_data[i,]['party']=="DFL"){  legislator_data[i,]['party'] <- "D" }
+  if(legislator_data[i,]['party']=="PNP/D"){  legislator_data[i,]['party'] <- "D" }
+  if(legislator_data[i,]['party']=="DNPL"){  legislator_data[i,]['party'] <- "D" }
+  if(legislator_data[i,]['party']=="Independent"){  legislator_data[i,]['party'] <- "D" }
+  if(legislator_data[i,]['party']=="RFL"){  legislator_data[i,]['party'] <- "R" }
+  if(legislator_data[i,]['party']=="PNP/R"){  legislator_data[i,]['party'] <- "R" }
+  if(legislator_data[i,]['party']=="RNPL"){  legislator_data[i,]['party'] <- "R" }
+}
+
+legislator_data <- unique(legislator_data)
+
+```
+
